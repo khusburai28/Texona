@@ -78,7 +78,7 @@ export const Navbar = ({
     const workspace = editor.getWorkspace();
 
     // Generate thumbnail from canvas
-    let thumbnailUrl = null;
+    let thumbnailUrl: string | undefined = undefined;
     try {
       // Save current viewport transform
       const originalTransform = editor.canvas.viewportTransform;
@@ -112,7 +112,7 @@ export const Navbar = ({
       json: JSON.stringify(json),
       width: workspace?.width || 900,
       height: workspace?.height || 1200,
-      thumbnailUrl,
+      thumbnailUrl: thumbnailUrl || undefined,
     });
   };
 
