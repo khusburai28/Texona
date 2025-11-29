@@ -9,6 +9,7 @@ interface RequestType {
   json: string;
   width: number;
   height: number;
+  thumbnailUrl?: string;
 }
 
 interface ResponseType {
@@ -29,7 +30,7 @@ export const useSaveAsTemplate = () => {
         userId: "anonymous",
         isTemplate: true,
         isPro: false,
-        thumbnailUrl: null,
+        thumbnailUrl: data.thumbnailUrl || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

@@ -9,6 +9,7 @@ interface UseHistoryProps {
     json: string;
     height: number;
     width: number;
+    thumbnailUrl?: string;
   }) => void;
 };
 
@@ -38,12 +39,44 @@ export const useHistory = ({ canvas, saveCallback }: UseHistoryProps) => {
 
     const workspace = canvas
       .getObjects()
-      .find((object) => object.name === "clip");
+      .find((object) => object.name === "clip") as fabric.Rect | undefined;
     const height = workspace?.height || 0;
     const width = workspace?.width || 0;
 
-    saveCallback?.({ json, height, width });
-  }, 
+    // Generate thumbnail
+    let thumbnailUrl: string | undefined = undefined;
+    try {
+      if (workspace && width > 0 && height > 0) {
+        // Save current viewport transform
+        const originalTransform = canvas.viewportTransform;
+
+        // Reset viewport for clean export
+        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+
+        // Generate thumbnail as data URL
+        const options = {
+          format: 'png',
+          quality: 0.8,
+          multiplier: 0.3, // Scale down for thumbnail
+          left: workspace.left || 0,
+          top: workspace.top || 0,
+          width: width,
+          height: height,
+        };
+
+        thumbnailUrl = canvas.toDataURL(options);
+
+        // Restore viewport transform
+        if (originalTransform) {
+          canvas.setViewportTransform(originalTransform);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to generate thumbnail:', error);
+    }
+
+    saveCallback?.({ json, height, width, thumbnailUrl });
+  },
   [
     canvas,
     saveCallback,
