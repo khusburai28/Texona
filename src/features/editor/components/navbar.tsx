@@ -77,11 +77,42 @@ export const Navbar = ({
     const json = editor.canvas.toJSON();
     const workspace = editor.getWorkspace();
 
+    // Generate thumbnail from canvas
+    let thumbnailUrl = null;
+    try {
+      // Save current viewport transform
+      const originalTransform = editor.canvas.viewportTransform;
+
+      // Reset viewport for clean export
+      editor.canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+
+      // Generate thumbnail as data URL
+      const options = {
+        format: 'png',
+        quality: 0.8,
+        multiplier: 0.3, // Scale down for thumbnail
+        left: workspace?.left || 0,
+        top: workspace?.top || 0,
+        width: workspace?.width || 900,
+        height: workspace?.height || 1200,
+      };
+
+      thumbnailUrl = editor.canvas.toDataURL(options);
+
+      // Restore viewport transform
+      if (originalTransform) {
+        editor.canvas.setViewportTransform(originalTransform);
+      }
+    } catch (error) {
+      console.error('Failed to generate thumbnail:', error);
+    }
+
     saveAsTemplateMutation.mutate({
       name: `Template ${new Date().toLocaleDateString()}`,
       json: JSON.stringify(json),
       width: workspace?.width || 900,
       height: workspace?.height || 1200,
+      thumbnailUrl,
     });
   };
 
