@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, Sparkles, Zap, Star } from "lucide-react";
+import { toast } from "sonner";
 
 import { useCreateProject } from "@/features/projects/api/use-create-project";
 
@@ -15,6 +16,7 @@ export const Banner = () => {
 
   const onClick = () => {
     setLoading(true);
+    toast.loading("Creating project...");
     mutation.mutate(
       {
         name: "Untitled project",
