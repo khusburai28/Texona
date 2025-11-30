@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2, Sparkles } from "lucide-react";
 
 import { ActiveTool, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
@@ -64,25 +64,64 @@ export const RemoveBgSidebar = ({
       )}
       {imageSrc && (
         <ScrollArea>
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-6">
             <div className={cn(
-              "relative aspect-square rounded-md overflow-hidden transition bg-muted",
-              mutation.isPending && "opacity-50",
+              "relative aspect-square rounded-md overflow-hidden transition bg-muted border-2",
+              mutation.isPending ? "border-primary/50" : "border-transparent",
             )}>
               <Image
                 src={imageSrc}
                 fill
                 alt="Image"
-                className="object-cover"
+                className={cn(
+                  "object-cover transition-all duration-300",
+                  mutation.isPending && "blur-sm opacity-50"
+                )}
               />
+              {mutation.isPending && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
+                  <Loader2 className="size-12 text-white animate-spin mb-3" />
+                  <p className="text-white text-sm font-medium">Processing...</p>
+                  <p className="text-white/80 text-xs mt-1">This may take a moment</p>
+                </div>
+              )}
             </div>
-            <Button
-              disabled={mutation.isPending}
-              onClick={onClick}
-              className="w-full"
-            >
-              Remove background
-            </Button>
+
+            <div className="space-y-3">
+              <Button
+                disabled={mutation.isPending}
+                onClick={onClick}
+                className="w-full"
+                size="lg"
+              >
+                {mutation.isPending ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Removing Background...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-4 mr-2" />
+                    Remove Background
+                  </>
+                )}
+              </Button>
+
+              <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
+                <p className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">•</span>
+                  <span>This process runs entirely in your browser - no data is sent to any server</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">•</span>
+                  <span>Processing may take 10-30 seconds depending on image size</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">•</span>
+                  <span>The result will be added as a new image on your canvas</span>
+                </p>
+              </div>
+            </div>
           </div>
         </ScrollArea>
       )}

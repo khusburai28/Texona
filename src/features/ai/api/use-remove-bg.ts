@@ -1,20 +1,50 @@
+"use client";
+
 import { useMutation } from "@tanstack/react-query";
-import { InferRequestType, InferResponseType } from "hono";
+import { toast } from "sonner";
 
-import { client } from "@/lib/hono";
+interface RequestType {
+  image: string;
+}
 
-type ResponseType = InferResponseType<typeof client.api.ai["remove-bg"]["$post"]>;
-type RequestType = InferRequestType<typeof client.api.ai["remove-bg"]["$post"]>["json"];
+interface ResponseType {
+  data: string;
+}
 
 export const useRemoveBg = () => {
-  const mutation = useMutation<
-    ResponseType,
-    Error,
-    RequestType
-  >({
-    mutationFn: async (json) => {
-      const response = await client.api.ai["remove-bg"].$post({ json });
-      return await response.json();
+  const mutation = useMutation<ResponseType, Error, RequestType>({
+    mutationFn: async ({ image }) => {
+      // Dynamically import the background removal library (client-side only)
+      const { removeBackground } = await import("@imgly/background-removal");
+
+      // Convert image URL to blob
+      const response = await fetch(image);
+      const blob = await response.blob();
+
+      // Remove background
+      const resultBlob = await removeBackground(blob, {
+        progress: (key, current, total) => {
+          console.log(`Processing: ${key} - ${Math.round((current / total) * 100)}%`);
+        },
+      });
+
+      // Convert blob to base64
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          resolve({ data: base64String });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(resultBlob);
+      });
+    },
+    onSuccess: () => {
+      toast.success("Background removed successfully");
+    },
+    onError: (error) => {
+      console.error("Background removal error:", error);
+      toast.error("Failed to remove background");
     },
   });
 
