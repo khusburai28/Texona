@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { AlertTriangle, Loader } from "lucide-react";
+import { AlertTriangle, Loader, Trash2 } from "lucide-react";
 
 import {
   ActiveTool,
@@ -9,6 +9,7 @@ import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-clos
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
 
 import { ResponseType, useGetTemplates } from "@/features/projects/api/use-get-templates";
+import { useDeleteTemplate } from "@/features/projects/api/use-delete-template";
 
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,10 +31,17 @@ export const TemplateSidebar = ({
     "You are about to replace the current project with this template."
   )
 
+  const [DeleteConfirmDialog, confirmDelete] = useConfirm(
+    "Delete Template?",
+    "Are you sure you want to delete this template? This action cannot be undone."
+  )
+
   const { data, isLoading, isError } = useGetTemplates({
     limit: "20",
     page: "1",
   });
+
+  const deleteMutation = useDeleteTemplate();
 
   const onClose = () => {
     onChangeActiveTool("select");
@@ -47,6 +55,14 @@ export const TemplateSidebar = ({
     }
   };
 
+  const handleDeleteTemplate = async (e: React.MouseEvent, templateId: string) => {
+    e.stopPropagation();
+    const ok = await confirmDelete();
+    if (ok) {
+      deleteMutation.mutate({ id: templateId });
+    }
+  };
+
   return (
     <aside
       className={cn(
@@ -55,6 +71,7 @@ export const TemplateSidebar = ({
       )}
     >
       <ConfirmDialog />
+      <DeleteConfirmDialog />
       <ToolSidebarHeader
         title="Templates"
         description="Choose from a variety of templates to get started"
@@ -77,26 +94,33 @@ export const TemplateSidebar = ({
           <div className="grid grid-cols-2 gap-4">
             {data && data.map((template) => {
               return (
-                <button
-                  style={{
-                    aspectRatio: `${template.width}/${template.height}`
-                  }}
-                  onClick={() => onClick(template)}
-                  key={template.id}
-                  className="relative w-full group hover:opacity-75 transition bg-muted rounded-sm overflow-hidden border"
-                >
-                  <Image
-                    fill
-                    src={template.thumbnailUrl || ""}
-                    alt={template.name || "Template"}
-                    className="object-cover"
-                  />
-                  <div
-                    className="opacity-0 group-hover:opacity-100 absolute left-0 bottom-0 w-full text-[10px] truncate text-white p-1 bg-black/50 text-left"
+                <div key={template.id} className="relative group">
+                  <button
+                    style={{
+                      aspectRatio: `${template.width}/${template.height}`
+                    }}
+                    onClick={() => onClick(template)}
+                    className="relative w-full hover:opacity-75 transition bg-muted rounded-sm overflow-hidden border"
                   >
-                    {template.name}
-                  </div>
-                </button>
+                    <Image
+                      fill
+                      src={template.thumbnailUrl || ""}
+                      alt={template.name || "Template"}
+                      className="object-cover"
+                    />
+                    <div
+                      className="opacity-0 group-hover:opacity-100 absolute left-0 bottom-0 w-full text-[10px] truncate text-white p-1 bg-black/50 text-left"
+                    >
+                      {template.name}
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteTemplate(e, template.id)}
+                    className="absolute top-1 right-1 h-6 w-6 flex items-center justify-center bg-red-500/80 hover:bg-red-600 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="size-3 text-white" />
+                  </button>
+                </div>
               )
             })}
           </div>

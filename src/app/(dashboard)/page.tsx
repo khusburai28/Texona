@@ -5,14 +5,21 @@ import { useRouter } from "next/navigation";
 import { Loader, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateProject } from "@/features/projects/api/use-create-project";
+import { useDeleteTemplate } from "@/features/projects/api/use-delete-template";
 import { ResponseType, useGetTemplates } from "@/features/projects/api/use-get-templates";
 import { TemplateCard } from "./template-card";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/hooks/use-confirm";
 
 export default function Home() {
   const router = useRouter();
   const mutation = useCreateProject();
+  const deleteMutation = useDeleteTemplate();
   const [showTemplates, setShowTemplates] = useState(false);
+  const [ConfirmDialog, confirm] = useConfirm(
+    "Delete Template?",
+    "Are you sure you want to delete this template? This action cannot be undone."
+  );
 
   const {
     data: templatesData,
@@ -80,8 +87,17 @@ export default function Home() {
     window.location.hash = "";
   };
 
+  const handleDeleteTemplate = async (e: React.MouseEvent, templateId: string) => {
+    e.stopPropagation();
+    const ok = await confirm();
+    if (ok) {
+      deleteMutation.mutate({ id: templateId });
+    }
+  };
+
   return (
     <div className="flex h-[calc(100vh-68px)] overflow-hidden -m-8">
+      <ConfirmDialog />
       {/* Left Side Panel: Preset Sizes */}
       <aside className="flex h-full w-[280px] shrink-0 flex-col border-r border-border p-4 bg-card overflow-y-auto">
         <div className="flex flex-col gap-4">
@@ -354,6 +370,7 @@ export default function Home() {
                     width={template.width}
                     height={template.height}
                     isPro={template.isPro || false}
+                    onDelete={(e) => handleDeleteTemplate(e, template.id)}
                   />
                 ))}
               </div>
