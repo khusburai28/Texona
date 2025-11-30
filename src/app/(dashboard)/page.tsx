@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
 import { useCreateProject } from "@/features/projects/api/use-create-project";
 import { ResponseType, useGetTemplates } from "@/features/projects/api/use-get-templates";
 import { TemplateCard } from "./template-card";
@@ -36,6 +37,7 @@ export default function Home() {
   }, []);
 
   const handleCreateBlank = () => {
+    toast.loading("Creating project...");
     mutation.mutate(
       {
         name: "Untitled project",
@@ -57,6 +59,7 @@ export default function Home() {
   };
 
   const handleTemplateClick = (template: ResponseType[0]) => {
+    toast.loading("Creating project...");
     mutation.mutate(
       {
         name: `${template.name} project`,
@@ -87,6 +90,7 @@ export default function Home() {
             {/* Instagram Post */}
             <div
               onClick={() => {
+                toast.loading("Creating project...");
                 mutation.mutate(
                   { name: "Instagram Post", json: "", width: 1080, height: 1080 },
                   { onSuccess: ({ data }) => router.push(`/editor/${data.id}`) }
@@ -109,6 +113,7 @@ export default function Home() {
             {/* Instagram Story */}
             <div
               onClick={() => {
+                toast.loading("Creating project...");
                 mutation.mutate(
                   { name: "Instagram Story", json: "", width: 1080, height: 1920 },
                   { onSuccess: ({ data }) => router.push(`/editor/${data.id}`) }
@@ -130,6 +135,7 @@ export default function Home() {
             {/* Facebook Post */}
             <div
               onClick={() => {
+                toast.loading("Creating project...");
                 mutation.mutate(
                   { name: "Facebook Post", json: "", width: 1200, height: 630 },
                   { onSuccess: ({ data }) => router.push(`/editor/${data.id}`) }
@@ -151,6 +157,7 @@ export default function Home() {
             {/* Facebook Cover */}
             <div
               onClick={() => {
+                toast.loading("Creating project...");
                 mutation.mutate(
                   { name: "Facebook Cover", json: "", width: 820, height: 312 },
                   { onSuccess: ({ data }) => router.push(`/editor/${data.id}`) }
@@ -172,6 +179,7 @@ export default function Home() {
             {/* LinkedIn Post */}
             <div
               onClick={() => {
+                toast.loading("Creating project...");
                 mutation.mutate(
                   { name: "LinkedIn Post", json: "", width: 1200, height: 627 },
                   { onSuccess: ({ data }) => router.push(`/editor/${data.id}`) }
@@ -193,6 +201,7 @@ export default function Home() {
             {/* LinkedIn Banner */}
             <div
               onClick={() => {
+                toast.loading("Creating project...");
                 mutation.mutate(
                   { name: "LinkedIn Banner", json: "", width: 1584, height: 396 },
                   { onSuccess: ({ data }) => router.push(`/editor/${data.id}`) }
@@ -214,6 +223,7 @@ export default function Home() {
             {/* Presentation */}
             <div
               onClick={() => {
+                toast.loading("Creating project...");
                 mutation.mutate(
                   { name: "Presentation", json: "", width: 1920, height: 1080 },
                   { onSuccess: ({ data }) => router.push(`/editor/${data.id}`) }
@@ -235,6 +245,7 @@ export default function Home() {
             {/* Document */}
             <div
               onClick={() => {
+                toast.loading("Creating project...");
                 mutation.mutate(
                   { name: "Document", json: "", width: 816, height: 1056 },
                   { onSuccess: ({ data }) => router.push(`/editor/${data.id}`) }

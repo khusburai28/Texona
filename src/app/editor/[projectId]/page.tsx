@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { Loader, TriangleAlert } from "lucide-react";
+import { toast } from "sonner";
+import { useEffect, useRef } from "react";
 
 import { useGetProject } from "@/features/projects/api/use-get-project";
 
@@ -17,11 +19,21 @@ interface EditorProjectIdPageProps {
 const EditorProjectIdPage = ({
   params,
 }: EditorProjectIdPageProps) => {
-  const { 
-    data, 
-    isLoading, 
+  const {
+    data,
+    isLoading,
     isError
   } = useGetProject(params.projectId);
+
+  const hasShownToast = useRef(false);
+
+  useEffect(() => {
+    if (data && !hasShownToast.current) {
+      toast.dismiss();
+      toast.success("Project Created");
+      hasShownToast.current = true;
+    }
+  }, [data]);
 
   if (isLoading || !data) {
     return (
@@ -32,6 +44,7 @@ const EditorProjectIdPage = ({
   }
 
   if (isError) {
+    toast.dismiss();
     return (
       <div className="h-full flex flex-col gap-y-5 items-center justify-center">
         <TriangleAlert className="size-6 text-muted-foreground" />
