@@ -1,47 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateProject } from "@/features/projects/api/use-create-project";
-import { useDeleteTemplate } from "@/features/projects/api/use-delete-template";
-import { ResponseType, useGetTemplates } from "@/features/projects/api/use-get-templates";
-import { TemplateCard } from "./template-card";
-import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/hooks/use-confirm";
 
 export default function Home() {
   const router = useRouter();
   const mutation = useCreateProject();
-  const deleteMutation = useDeleteTemplate();
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [ConfirmDialog, confirm] = useConfirm(
-    "Delete Template?",
-    "Are you sure you want to delete this template? This action cannot be undone."
-  );
-
-  const {
-    data: templatesData,
-    isLoading: templatesLoading,
-    isError: templatesError
-  } = useGetTemplates({ page: "1", limit: "20" });
-
-  // Check URL hash on mount and when hash changes
-  useEffect(() => {
-    const handleHashChange = () => {
-      if (window.location.hash === "#templates") {
-        setShowTemplates(true);
-      } else {
-        setShowTemplates(false);
-      }
-    };
-
-    handleHashChange(); // Check initial hash
-    window.addEventListener("hashchange", handleHashChange);
-
-    return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
 
   const handleCreateBlank = () => {
     toast.loading("Creating project...");
@@ -61,43 +26,11 @@ export default function Home() {
   };
 
   const handleBrowseTemplates = () => {
-    setShowTemplates(true);
-    window.location.hash = "templates";
-  };
-
-  const handleTemplateClick = (template: ResponseType[0]) => {
-    toast.loading("Creating project...");
-    mutation.mutate(
-      {
-        name: `${template.name} project`,
-        json: template.json,
-        width: template.width,
-        height: template.height,
-      },
-      {
-        onSuccess: ({ data }) => {
-          router.push(`/editor/${data.id}`);
-        },
-      }
-    );
-  };
-
-  const handleBackToHome = () => {
-    setShowTemplates(false);
-    window.location.hash = "";
-  };
-
-  const handleDeleteTemplate = async (e: React.MouseEvent, templateId: string) => {
-    e.stopPropagation();
-    const ok = await confirm();
-    if (ok) {
-      deleteMutation.mutate({ id: templateId });
-    }
+    router.push("/templates");
   };
 
   return (
     <div className="flex h-[calc(100vh-68px)] overflow-hidden -m-8">
-      <ConfirmDialog />
       {/* Left Side Panel: Preset Sizes */}
       <aside className="flex h-full w-[280px] shrink-0 flex-col border-r border-border p-4 bg-card overflow-y-auto">
         <div className="flex flex-col gap-4">
@@ -285,113 +218,45 @@ export default function Home() {
 
       {/* Center Canvas Area */}
       <div className="flex-1 bg-[#090915] flex flex-col p-8 overflow-auto">
-        {!showTemplates ? (
-          // Welcome View
-          <div className="flex flex-col items-center justify-center gap-6 text-center flex-1">
-            <h2 className="text-3xl font-bold text-white tracking-tighter">Welcome to Texona!</h2>
-            <p className="text-white/60 max-w-md">What will you create today? Start with a professionally designed template or from a blank canvas.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl mt-4">
+        {/* Welcome View */}
+        <div className="flex flex-col items-center justify-center gap-6 text-center flex-1">
+          <h2 className="text-3xl font-bold text-white tracking-tighter">Welcome to Texona!</h2>
+          <p className="text-white/60 max-w-md">What will you create today? Start with a professionally designed template or from a blank canvas.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl mt-4">
+            <div
+              onClick={handleBrowseTemplates}
+              className="flex flex-col gap-3 p-4 border border-white/10 rounded-xl bg-[#101022]/50 hover:bg-[#101022] cursor-pointer transition-colors"
+            >
               <div
-                onClick={handleBrowseTemplates}
-                className="flex flex-col gap-3 p-4 border border-white/10 rounded-xl bg-[#101022]/50 hover:bg-[#101022] cursor-pointer transition-colors"
-              >
-                <div
-                  className="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg"
-                  style={{
-                    backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    backgroundSize: 'cover'
-                  }}
-                />
-                <div>
-                  <p className="text-white text-base font-medium leading-normal">Browse Templates</p>
-                  <p className="text-white/60 text-sm font-normal leading-normal">Start your design with a professional template.</p>
-                </div>
-              </div>
-              <div
-                onClick={handleCreateBlank}
-                className="flex flex-col gap-3 p-4 border border-white/10 rounded-xl bg-[#101022]/50 hover:bg-[#101022] cursor-pointer transition-colors"
-              >
-                <div
-                  className="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center"
-                >
-                  <svg className="w-16 h-16 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-white text-base font-medium leading-normal">New Blank Canvas</p>
-                  <p className="text-white/60 text-sm font-normal leading-normal">Begin with a fresh, empty workspace.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          // Templates View
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+                className="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg"
+                style={{
+                  backgroundImage: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  backgroundSize: 'cover'
+                }}
+              />
               <div>
-                <h2 className="text-2xl font-bold text-white tracking-tighter">Browse Templates</h2>
-                <p className="text-white/60 text-sm mt-1">Choose a template to get started quickly</p>
+                <p className="text-white text-base font-medium leading-normal">Browse Templates</p>
+                <p className="text-white/60 text-sm font-normal leading-normal">Start your design with a professional template.</p>
               </div>
-              <button
-                onClick={handleBackToHome}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm font-medium"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back to Home
-              </button>
             </div>
-
-            {templatesLoading && (
-              <div className="flex items-center justify-center h-64">
-                <Loader className="size-8 text-white/60 animate-spin" />
-              </div>
-            )}
-
-            {templatesError && (
-              <div className="flex flex-col gap-y-4 items-center justify-center h-64">
-                <TriangleAlert className="size-8 text-white/60" />
-                <p className="text-white/60">Failed to load templates</p>
-              </div>
-            )}
-
-            {!templatesLoading && !templatesError && templatesData && templatesData.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-8">
-                {templatesData.map((template) => (
-                  <TemplateCard
-                    key={template.id}
-                    title={template.name}
-                    imageSrc={template.thumbnailUrl || ""}
-                    onClick={() => handleTemplateClick(template)}
-                    disabled={mutation.isPending}
-                    description={`${template.width} × ${template.height} px`}
-                    width={template.width}
-                    height={template.height}
-                    isPro={template.isPro || false}
-                    onDelete={(e) => handleDeleteTemplate(e, template.id)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {!templatesLoading && !templatesError && templatesData && templatesData.length === 0 && (
-              <div className="flex flex-col gap-y-4 items-center justify-center h-64">
+            <div
+              onClick={handleCreateBlank}
+              className="flex flex-col gap-3 p-4 border border-white/10 rounded-xl bg-[#101022]/50 hover:bg-[#101022] cursor-pointer transition-colors"
+            >
+              <div
+                className="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center"
+              >
                 <svg className="w-16 h-16 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <p className="text-white/60">No templates available</p>
-                <button
-                  onClick={handleBackToHome}
-                  className="mt-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity text-sm font-medium"
-                >
-                  Back to Home
-                </button>
               </div>
-            )}
+              <div>
+                <p className="text-white text-base font-medium leading-normal">New Blank Canvas</p>
+                <p className="text-white/60 text-sm font-normal leading-normal">Begin with a fresh, empty workspace.</p>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Right Side Panel: Properties & Suggestions */}
