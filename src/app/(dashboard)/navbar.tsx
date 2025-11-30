@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export const Navbar = () => {
+  const router = useRouter();
+
+  const handleDashboardClick = () => {
+    // Clear hash and navigate to home
+    window.location.hash = "";
+    router.push("/");
+  };
+
   return (
     <header className="flex items-center justify-between whitespace-nowrap border-b border-border px-6 py-3 shrink-0 bg-card/80 backdrop-blur-sm z-20">
       <div className="flex items-center gap-4 text-foreground">
@@ -14,20 +23,18 @@ export const Navbar = () => {
         </Link>
       </div>
       <div className="flex items-center gap-9">
-        <Link className="text-foreground text-sm font-medium leading-normal" href="/">
+        <button
+          onClick={handleDashboardClick}
+          className="text-foreground text-sm font-medium leading-normal hover:opacity-75 transition"
+        >
           Dashboard
-        </Link>
-        <Link className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium leading-normal" href="/#projects">
+        </button>
+        <Link className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium leading-normal" href="/projects">
           My Projects
         </Link>
-        <button
-          onClick={() => {
-            window.location.hash = "templates";
-          }}
-          className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium leading-normal"
-        >
+        <Link className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium leading-normal" href="/templates">
           Templates
-        </button>
+        </Link>
       </div>
       <div className="flex items-center gap-4">
         <div className="flex gap-2">
