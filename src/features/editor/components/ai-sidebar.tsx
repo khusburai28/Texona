@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Wand2, ImageIcon, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Wand2, ImageIcon, Loader2, Key, Settings2 } from "lucide-react";
 
 import { ActiveTool, Editor, JSON_KEYS } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
@@ -11,9 +11,26 @@ import { useAiEdit } from "@/features/ai/api/use-ai-edit";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 type AiMode = "generate" | "edit";
+type AspectRatio = "16:9" | "1:1" | "21:9" | "2:3" | "3:2" | "4:5" | "5:4" | "9:16" | "9:21";
+
+const STORAGE_KEY = "stability-ai-api-key";
 
 interface AiSidebarProps {
   editor: Editor | undefined;
@@ -31,6 +48,28 @@ export const AiSidebar = ({
 
   const [mode, setMode] = useState<AiMode>("generate");
   const [value, setValue] = useState("");
+  const [negativePrompt, setNegativePrompt] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("16:9");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedKey = localStorage.getItem(STORAGE_KEY);
+    if (savedKey) {
+      setApiKey(savedKey);
+    }
+  }, []);
+
+  // Save API key to localStorage when it changes
+  const handleApiKeyChange = (newKey: string) => {
+    setApiKey(newKey);
+    if (newKey) {
+      localStorage.setItem(STORAGE_KEY, newKey);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  };
 
   const isPending = generateMutation.isPending || editMutation.isPending;
 
@@ -40,9 +79,16 @@ export const AiSidebar = ({
     e.preventDefault();
 
     if (mode === "generate") {
-      generateMutation.mutate({ prompt: value }, {
-        onSuccess: ({ data }) => {
-          editor?.addImage(data);
+      generateMutation.mutate({
+        prompt: value,
+        negativePrompt: negativePrompt || undefined,
+        apiKey: apiKey || undefined,
+        aspectRatio: aspectRatio,
+      }, {
+        onSuccess: (response) => {
+          if ('data' in response) {
+            editor?.addImage(response.data);
+          }
         }
       });
     } else {
@@ -135,20 +181,115 @@ export const AiSidebar = ({
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
-            <Textarea
-              disabled={isPending}
-              placeholder={
-                mode === "generate"
-                  ? "An astronaut riding a horse on mars, hd, dramatic lighting"
-                  : "Change the text color to red, add a blue circle in the center, move the rectangle to the left..."
-              }
-              cols={30}
-              rows={10}
-              required
-              minLength={3}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-            />
+            {/* API Key Field */}
+            <div className="space-y-2">
+              <Label htmlFor="apiKey" className="flex items-center gap-2 text-xs">
+                <Key className="size-3" />
+                Stability AI API Key
+              </Label>
+              <Input
+                id="apiKey"
+                type="password"
+                placeholder="sk-..."
+                value={apiKey}
+                onChange={(e) => handleApiKeyChange(e.target.value)}
+                className="text-sm"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Get your API key from{" "}
+                <a
+                  href="https://platform.stability.ai/account/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-foreground"
+                >
+                  platform.stability.ai
+                </a>
+              </p>
+            </div>
+
+            {/* Main Prompt */}
+            <div className="space-y-2">
+              <Label htmlFor="prompt" className="text-xs">
+                {mode === "generate" ? "Prompt" : "Instruction"}
+              </Label>
+              <Textarea
+                id="prompt"
+                disabled={isPending}
+                placeholder={
+                  mode === "generate"
+                    ? "An astronaut riding a horse on mars, hd, dramatic lighting, photorealistic"
+                    : "Change the text color to red, add a blue circle in the center, move the rectangle to the left..."
+                }
+                rows={mode === "generate" ? 5 : 8}
+                required
+                minLength={3}
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                className="text-sm resize-none"
+              />
+            </div>
+
+            {/* Advanced Options - Only for Generate mode */}
+            {mode === "generate" && (
+              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start gap-2 text-xs px-0"
+                  >
+                    <Settings2 className="size-3" />
+                    Advanced Options
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 pt-2">
+                  {/* Negative Prompt */}
+                  <div className="space-y-2">
+                    <Label htmlFor="negativePrompt" className="text-xs">
+                      Negative Prompt
+                    </Label>
+                    <Textarea
+                      id="negativePrompt"
+                      disabled={isPending}
+                      placeholder="ugly, blurry, low quality, distorted, deformed"
+                      rows={3}
+                      value={negativePrompt}
+                      onChange={(e) => setNegativePrompt(e.target.value)}
+                      className="text-sm resize-none"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Describe what you don't want in the image
+                    </p>
+                  </div>
+
+                  {/* Aspect Ratio */}
+                  <div className="space-y-2">
+                    <Label htmlFor="aspectRatio" className="text-xs">
+                      Aspect Ratio
+                    </Label>
+                    <Select value={aspectRatio} onValueChange={(value) => setAspectRatio(value as AspectRatio)}>
+                      <SelectTrigger id="aspectRatio" className="text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
+                        <SelectItem value="1:1">1:1 (Square)</SelectItem>
+                        <SelectItem value="21:9">21:9 (Ultrawide)</SelectItem>
+                        <SelectItem value="2:3">2:3 (Portrait)</SelectItem>
+                        <SelectItem value="3:2">3:2 (Photo)</SelectItem>
+                        <SelectItem value="4:5">4:5 (Portrait)</SelectItem>
+                        <SelectItem value="5:4">5:4 (Landscape)</SelectItem>
+                        <SelectItem value="9:16">9:16 (Vertical)</SelectItem>
+                        <SelectItem value="9:21">9:21 (Vertical Wide)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
             <Button
               disabled={isPending}
               type="submit"

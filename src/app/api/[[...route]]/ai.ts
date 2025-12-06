@@ -34,22 +34,62 @@ const app = new Hono()
       "json",
       z.object({
         prompt: z.string(),
+        negativePrompt: z.string().optional(),
+        apiKey: z.string().optional(),
+        aspectRatio: z.enum(["16:9", "1:1", "21:9", "2:3", "3:2", "4:5", "5:4", "9:16", "9:21"]).optional(),
       }),
     ),
     async (c) => {
-      const { prompt } = c.req.valid("json");
+      const { prompt, negativePrompt, apiKey, aspectRatio } = c.req.valid("json");
 
-      const result = await fal.subscribe("fal-ai/flux/schnell", {
-        input: {
-          prompt: prompt,
-          image_size: "landscape_16_9",
-          num_inference_steps: 4,
-          num_images: 1,
-          enable_safety_checker: true,
-        },
-      }) as { images: Array<{ url: string }> };
+      // Use Stability AI API
+      const stabilityApiKey = apiKey || process.env.STABILITY_API_KEY;
 
-      return c.json({ data: result.images[0].url });
+      if (!stabilityApiKey) {
+        return c.json({ error: "Stability AI API key is required. Please set your API key." }, 400);
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append("prompt", prompt);
+        formData.append("output_format", "webp");
+        formData.append("aspect_ratio", aspectRatio || "16:9");
+
+        if (negativePrompt) {
+          formData.append("negative_prompt", negativePrompt);
+        }
+
+        // Using Stable Diffusion 3.5 Large - lower credit cost model
+        const response = await fetch(
+          "https://api.stability.ai/v2beta/stable-image/generate/sd3",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${stabilityApiKey}`,
+              Accept: "image/*",
+            },
+            body: formData,
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Stability AI error:", errorText);
+          throw new Error(`Stability AI request failed: ${response.status}`);
+        }
+
+        // Convert image to base64
+        const imageBuffer = await response.arrayBuffer();
+        const base64 = Buffer.from(imageBuffer).toString("base64");
+        const dataUrl = `data:image/webp;base64,${base64}`;
+
+        return c.json({ data: dataUrl });
+      } catch (error) {
+        console.error("Image generation error:", error);
+        return c.json({
+          error: error instanceof Error ? error.message : "Failed to generate image"
+        }, 500);
+      }
     },
   )
   .post(
