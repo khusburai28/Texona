@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Wand2, ImageIcon, Loader2, Key, Settings2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { ActiveTool, Editor, JSON_KEYS } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
@@ -9,6 +10,7 @@ import { useGenerateImage } from "@/features/ai/api/use-generate-image";
 import { useAiEdit } from "@/features/ai/api/use-ai-edit";
 
 import { cn } from "@/lib/utils";
+import { storeImageInIndexedDB, getImageFromIndexedDB } from "@/lib/indexed-db";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -85,9 +87,25 @@ export const AiSidebar = ({
         apiKey: apiKey || undefined,
         aspectRatio: aspectRatio,
       }, {
-        onSuccess: (response) => {
+        onSuccess: async (response) => {
           if ('data' in response) {
-            editor?.addImage(response.data);
+            try {
+              // Store the base64 image in IndexedDB
+              const imageId = await storeImageInIndexedDB(response.data);
+
+              // Create a reference URL that we'll use to retrieve from IndexedDB
+              const referenceUrl = `indexeddb://${imageId}`;
+
+              // Add the image to the canvas with the reference URL
+              editor?.addImage(response.data);
+
+              toast.success("Image generated and stored successfully!");
+            } catch (error) {
+              console.error("Failed to store image:", error);
+              toast.error("Image generated but failed to store. It may not persist after refresh.");
+              // Still add the image even if storage fails
+              editor?.addImage(response.data);
+            }
           }
         }
       });
