@@ -59,9 +59,9 @@ const app = new Hono()
           formData.append("negative_prompt", negativePrompt);
         }
 
-        // Using Stable Diffusion 3.5 Large - lower credit cost model
+        // Using Stable Diffusion 3.5 Flash - fastest and most credit-efficient model
         const response = await fetch(
-          "https://api.stability.ai/v2beta/stable-image/generate/sd3",
+          "https://api.stability.ai/v2beta/stable-image/generate/sd3.5-flash",
           {
             method: "POST",
             headers: {
