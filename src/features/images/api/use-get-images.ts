@@ -2,11 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 
 import { client } from "@/lib/hono";
 
-export const useGetImages = () => {
+export const useGetImages = (searchQuery?: string) => {
   const query = useQuery({
-    queryKey: ["images"],
+    queryKey: ["images", searchQuery],
     queryFn: async () => {
-      const response = await client.api.images.$get();
+      const response = await client.api.images.$get({
+        query: searchQuery ? { query: searchQuery } : undefined,
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch images");

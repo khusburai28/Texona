@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { AlertTriangle, Loader, Upload, Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { AlertTriangle, Loader, Upload, Trash2, Search } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
 
 import { ActiveTool, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
@@ -13,6 +13,7 @@ import { useUploadImage, useGetUploadedImages, useDeleteUploadedImage } from "@/
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useConfirm } from "@/hooks/use-confirm";
 
 interface ImageSidebarProps {
@@ -22,11 +23,23 @@ interface ImageSidebarProps {
 }
 
 export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSidebarProps) => {
-  const { data, isLoading, isError } = useGetImages();
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const { data, isLoading, isError } = useGetImages(debouncedSearch);
   const uploadedImages = useGetUploadedImages();
   const uploadMutation = useUploadImage();
   const deleteMutation = useDeleteUploadedImage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const [ConfirmDialog, confirm] = useConfirm(
     "Delete Image?",
@@ -72,7 +85,7 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
     >
       <ConfirmDialog />
       <ToolSidebarHeader title="Images" description="Add images to your canvas" />
-      <div className="p-4 border-b">
+      <div className="p-4 border-b space-y-3">
         <input
           ref={fileInputRef}
           type="file"
@@ -89,6 +102,15 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
           <Upload className="size-4 mr-2" />
           {uploadMutation.isPending ? "Uploading..." : "Upload Image"}
         </Button>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Search images... (e.g., nature, business, city)"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="pl-9"
+          />
+        </div>
       </div>
       {uploadedImages.data && uploadedImages.data.length > 0 && (
         <>
@@ -127,7 +149,9 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
       )}
       {data && data.length > 0 && (
         <div className="px-4 py-2">
-          <p className="text-xs font-medium text-muted-foreground">Stock Images</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {debouncedSearch ? `Results for "${debouncedSearch}"` : "Stock Images"}
+          </p>
         </div>
       )}
       {isLoading && (
@@ -139,6 +163,15 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
         <div className="flex flex-col gap-y-4 items-center justify-center flex-1">
           <AlertTriangle className="size-4 text-muted-foreground" />
           <p className="text-muted-foreground text-xs">Failed to fetch images</p>
+        </div>
+      )}
+      {!isLoading && !isError && data && data.length === 0 && debouncedSearch && (
+        <div className="flex flex-col gap-y-4 items-center justify-center flex-1 p-4">
+          <Search className="size-8 text-muted-foreground" />
+          <div className="text-center">
+            <p className="text-muted-foreground text-sm font-medium">No images found</p>
+            <p className="text-muted-foreground text-xs mt-1">Try searching for something else</p>
+          </div>
         </div>
       )}
       <ScrollArea>
