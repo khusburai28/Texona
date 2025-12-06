@@ -43,7 +43,8 @@ export const useSaveAsTemplate = () => {
     },
     onSuccess: () => {
       toast.success("Saved as template!");
-      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      // Invalidate all queries that start with "templates"
+      queryClient.invalidateQueries({ queryKey: ["templates"], refetchType: "all" });
     },
     onError: () => {
       toast.error("Failed to save as template.");
