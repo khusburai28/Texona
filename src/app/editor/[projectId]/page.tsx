@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Loader, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, use } from "react";
 
 import { useGetProject } from "@/features/projects/api/use-get-project";
 
@@ -11,19 +11,22 @@ import { Editor } from "@/features/editor/components/editor";
 import { Button } from "@/components/ui/button";
 
 interface EditorProjectIdPageProps {
-  params: {
+  params: Promise<{
     projectId: string;
-  };
-};
+  }>;
+}
 
 const EditorProjectIdPage = ({
   params,
 }: EditorProjectIdPageProps) => {
+  // Unwrap the params Promise using React.use()
+  const { projectId } = use(params);
+
   const {
     data,
     isLoading,
     isError
-  } = useGetProject(params.projectId);
+  } = useGetProject(projectId);
 
   const hasShownToast = useRef(false);
 

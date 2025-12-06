@@ -20,6 +20,35 @@ const nextConfig = {
       },
     ],
   },
+
+  // Server-side optimization - externalize client-only packages
+  serverExternalPackages: [
+    "@imgly/background-removal",
+    "onnxruntime-node",
+    "sharp",
+  ],
+
+  // Webpack configuration for handling onnxruntime-web
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Client-side: add fallbacks for Node.js modules
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+        module: false,
+      };
+    }
+
+    // Handle WASM files
+    config.module.rules.push({
+      test: /\.wasm$/,
+      type: "asset/resource",
+    });
+
+    return config;
+  },
 };
 
 export default nextConfig;
