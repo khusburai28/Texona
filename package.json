@@ -46,7 +46,7 @@
     "next": "^16.0.7",
     "next-auth": "^5.0.0-beta.19",
     "next-themes": "^0.3.0",
-    "onnxruntime-web": "^1.23.2",
+    "onnxruntime-web": "^1.21.0",
     "react": "^19.2.1",
     "react-color": "^2.19.3",
     "react-dom": "^19.2.1",
