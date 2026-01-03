@@ -54,6 +54,10 @@ graph TD
 
 ![](system_architecture.png)
 
+## WireFrames
+
+![](wireframes.png)
+
 ## Tech Stack
 - **Frontend**: Next.js, React, Fabric.js
 - **Backend**: Hono, Node.js
