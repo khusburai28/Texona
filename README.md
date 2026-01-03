@@ -27,12 +27,32 @@ Texona is a Generative AI platform that creates retailer-compliant creatives in 
 - **Guideline Validation**: Automated compliance checking
 - **Optimized Exports**: JPEG/PNG under 500KB
 
-### Workflow
-1. Upload assets (packshots, backgrounds, logos)
-2. AI preprocessing (background removal, enhancement)
-3. Layout suggestions based on visual hierarchy
-4. Guideline validation
-5. Multi-format export
+### End-to-End Flow
+
+```mermaid
+graph TD
+    A[Upload] --> B[AI Preprocessing]
+    B --> C[Layout Suggestions]
+    C --> D[Guideline Validation]
+    D --> E[Multi-Format Export]
+
+    style A fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style C fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style D fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style E fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+```
+
+**Workflow Steps:**
+1. **Upload** - Packshots, backgrounds, logos, brand assets
+2. **AI Preprocessing** - Background removal, enhancement, product clarity
+3. **Layout Suggestions** - AI-driven balanced layouts based on visual hierarchy
+4. **Guideline Validation** - Automated retailer & brand compliance checking
+5. **Multi-Format Export** - JPEG/PNG/PDF under 500KB for all social formats
+
+## System Architecture
+
+![](system_architecture.png)
 
 ## Tech Stack
 - **Frontend**: Next.js, React, Fabric.js
