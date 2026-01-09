@@ -90,6 +90,15 @@ Machine Learning and Artificial Intelligence
 - Khusbu Rai - Backend Developer
 - Nikita Babbar - Gen AI Engineer
 - Piyush Singh - AI/ML Engineer
+  
+  ## 📄 Team Resumes
+
+- 👩‍💻 **Nikita Babbar – Gen AI Engineer**  
+  📘 [View Resume (PDF)](./Nikita_Babbar_Resume.pdf)
+
+- 👨‍💻 **Piyush Singh – AI/ML Engineer**  
+  📘 [View Resume (PDF)](./Piyush_Kumar_Resume.pdf)
+
 
 ## Impact
 - Reduces production from 3.5 hours to 5 minutes
