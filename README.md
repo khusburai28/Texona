@@ -94,10 +94,10 @@ Machine Learning and Artificial Intelligence
   ## 📄 Team Resumes
 
 - 👩‍💻 **Nikita Babbar – Gen AI Engineer**  
-  📘 [View Resume (PDF)](./Nikita_Babbar_Resume.pdf)
+  📘 [View Resume (PDF)](./Nikita_Babbar_Resume%20(10).pdf)
 
 - 👨‍💻 **Piyush Singh – AI/ML Engineer**  
-  📘 [View Resume (PDF)](./Piyush_Kumar_Resume_GEN_AI.pdf)
+  📘 [View Resume (PDF)](./Piyush_Kumar_Resume_GEN_AI%20(1).pdf)
 
 
 ## Impact
