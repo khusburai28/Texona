@@ -1,24 +1,26 @@
 import { useState } from "react";
+import { toast } from "sonner";
 
-import { 
-  FaBold, 
-  FaItalic, 
-  FaStrikethrough, 
+import {
+  FaBold,
+  FaItalic,
+  FaStrikethrough,
   FaUnderline
 } from "react-icons/fa";
 import { TbColorFilter } from "react-icons/tb";
 import { BsBorderWidth } from "react-icons/bs";
 import { RxTransparencyGrid } from "react-icons/rx";
-import { 
-  ArrowUp, 
-  ArrowDown, 
-  ChevronDown, 
-  AlignLeft, 
-  AlignCenter, 
+import {
+  ArrowUp,
+  ArrowDown,
+  ChevronDown,
+  AlignLeft,
+  AlignCenter,
   AlignRight,
   Trash,
   SquareSplitHorizontal,
-  Copy
+  Copy,
+  Sparkles
 } from "lucide-react";
 
 import { isTextType } from "@/features/editor/utils";
@@ -33,6 +35,14 @@ import {
 import { cn } from "@/lib/utils";
 import { Hint } from "@/components/hint";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useAestheticScore } from "@/features/ai/api/use-aesthetic-score";
 
 interface ToolbarProps {
   editor: Editor | undefined;
@@ -66,6 +76,11 @@ export const Toolbar = ({
     textAlign: initialTextAlign,
     fontSize: initialFontSize,
   });
+
+  const [showAestheticScore, setShowAestheticScore] = useState(false);
+  const [aestheticData, setAestheticData] = useState<any>(null);
+
+  const aestheticScoreMutation = useAestheticScore();
 
   const selectedObject = editor?.selectedObjects[0];
   const selectedObjectType = editor?.selectedObjects[0]?.type;
@@ -154,9 +169,143 @@ export const Toolbar = ({
     }));
   };
 
+  const checkAestheticScore = async () => {
+    if (!editor) {
+      toast.error("Editor not ready");
+      return;
+    }
+
+    try {
+      const workspace = editor.getWorkspace();
+
+      if (!workspace) {
+        toast.error("No canvas workspace found");
+        return;
+      }
+
+      toast.loading("Analyzing design aesthetics...");
+
+      // Export canvas as PNG data URL
+      const dataUrl = editor.canvas.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 1,
+        left: workspace.left || 0,
+        top: workspace.top || 0,
+        width: workspace.width || 900,
+        height: workspace.height || 1200,
+      });
+
+      const result = await aestheticScoreMutation.mutateAsync({
+        image: dataUrl,
+      });
+
+      toast.dismiss();
+      setAestheticData(result.data);
+      setShowAestheticScore(true);
+    } catch (error) {
+      toast.dismiss();
+      toast.error("Failed to calculate aesthetic score");
+      console.error("Aesthetic score error:", error);
+    }
+  };
+
   if (editor?.selectedObjects.length === 0) {
     return (
-      <div className="shrink-0 h-[56px] border-b bg-card w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-2" />
+      <>
+        <div className="shrink-0 h-[56px] border-b bg-card w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-2">
+          <div className="ml-auto flex items-center gap-x-2">
+            <Hint label="Check Aesthetic Score" side="bottom" sideOffset={5}>
+              <Button
+                onClick={checkAestheticScore}
+                disabled={aestheticScoreMutation.isPending}
+                variant="ghost"
+                size="sm"
+                className="gap-x-2"
+              >
+                <Sparkles className="size-4" />
+                Check Aesthetic Score
+              </Button>
+            </Hint>
+          </div>
+        </div>
+        <Dialog open={showAestheticScore} onOpenChange={setShowAestheticScore}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-x-2">
+                <Sparkles className="size-5" />
+                Aesthetic Score Analysis
+              </DialogTitle>
+              <DialogDescription>
+                AI-powered design evaluation by Gemini 2.5 Flash
+              </DialogDescription>
+            </DialogHeader>
+            {aestheticData && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-center">
+                  <div className="relative">
+                    <div className="text-6xl font-bold text-primary">
+                      {aestheticData.score}
+                    </div>
+                    <div className="text-sm text-muted-foreground text-center">
+                      out of 100
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-sm">Score Breakdown</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Visual Balance & Composition:</span>
+                      <span className="font-medium">{aestheticData.breakdown.balance}/25</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Color Harmony & Contrast:</span>
+                      <span className="font-medium">{aestheticData.breakdown.color}/25</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Typography & Readability:</span>
+                      <span className="font-medium">{aestheticData.breakdown.typography}/20</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>White Space & Layout:</span>
+                      <span className="font-medium">{aestheticData.breakdown.layout}/15</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Overall Visual Appeal:</span>
+                      <span className="font-medium">{aestheticData.breakdown.appeal}/15</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm">Summary</h3>
+                  <p className="text-sm text-muted-foreground">{aestheticData.summary}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm">Strengths</h3>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                    {aestheticData.strengths.map((strength: string, index: number) => (
+                      <li key={index}>{strength}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm">Suggestions for Improvement</h3>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                    {aestheticData.improvements.map((improvement: string, index: number) => (
+                      <li key={index}>{improvement}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
@@ -448,6 +597,96 @@ export const Toolbar = ({
           </Button>
         </Hint>
       </div>
+      <div className="ml-auto flex items-center gap-x-2">
+        <Hint label="Check Aesthetic Score" side="bottom" sideOffset={5}>
+          <Button
+            onClick={checkAestheticScore}
+            disabled={aestheticScoreMutation.isPending}
+            variant="ghost"
+            size="sm"
+            className="gap-x-2"
+          >
+            <Sparkles className="size-4" />
+            Check Aesthetic Score
+          </Button>
+        </Hint>
+      </div>
+      <Dialog open={showAestheticScore} onOpenChange={setShowAestheticScore}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-x-2">
+              <Sparkles className="size-5" />
+              Aesthetic Score Analysis
+            </DialogTitle>
+            <DialogDescription>
+              AI-powered design evaluation by Gemini 2.5 Flash
+            </DialogDescription>
+          </DialogHeader>
+          {aestheticData && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-center">
+                <div className="relative">
+                  <div className="text-6xl font-bold text-primary">
+                    {aestheticData.score}
+                  </div>
+                  <div className="text-sm text-muted-foreground text-center">
+                    out of 100
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm">Score Breakdown</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Visual Balance & Composition:</span>
+                    <span className="font-medium">{aestheticData.breakdown.balance}/25</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Color Harmony & Contrast:</span>
+                    <span className="font-medium">{aestheticData.breakdown.color}/25</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Typography & Readability:</span>
+                    <span className="font-medium">{aestheticData.breakdown.typography}/20</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>White Space & Layout:</span>
+                    <span className="font-medium">{aestheticData.breakdown.layout}/15</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Overall Visual Appeal:</span>
+                    <span className="font-medium">{aestheticData.breakdown.appeal}/15</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Summary</h3>
+                <p className="text-sm text-muted-foreground">{aestheticData.summary}</p>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Strengths</h3>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  {aestheticData.strengths.map((strength: string, index: number) => (
+                    <li key={index}>{strength}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Suggestions for Improvement</h3>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  {aestheticData.improvements.map((improvement: string, index: number) => (
+                    <li key={index}>{improvement}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
