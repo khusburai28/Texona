@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { fabric } from "fabric";
 import { toast } from "sonner";
 
 import {
