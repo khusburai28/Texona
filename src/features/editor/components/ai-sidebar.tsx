@@ -119,6 +119,8 @@ export const AiSidebar = ({
       const width = workspace?.width as number || 900;
       const height = workspace?.height as number || 1200;
 
+      toast.loading("AI is editing your canvas...");
+
       editMutation.mutate({
         prompt: value,
         canvasJson,
@@ -126,6 +128,7 @@ export const AiSidebar = ({
         height
       }, {
         onSuccess: (response) => {
+          toast.dismiss();
           if ('data' in response) {
             // Parse the response to check if clip object exists
             try {
@@ -142,10 +145,18 @@ export const AiSidebar = ({
               }
 
               editor?.loadJson(JSON.stringify(data));
-            } catch {
-              editor?.loadJson(response.data);
+              toast.success("Canvas edited successfully!");
+            } catch (error) {
+              console.error("Failed to parse AI response:", error);
+              toast.error("Failed to apply AI edit - invalid response format");
             }
+          } else if ('error' in response) {
+            toast.error(response.error);
           }
+        },
+        onError: (error) => {
+          toast.dismiss();
+          toast.error(error.message || "Failed to edit canvas with AI");
         }
       });
     }

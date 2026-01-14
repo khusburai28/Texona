@@ -106,56 +106,150 @@ const app = new Hono()
     async (c) => {
       const { prompt, canvasJson, width, height } = c.req.valid("json");
 
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          temperature: 0.1, // Low temperature for more deterministic outputs
+          topP: 0.8,
+          topK: 20,
+        },
+      });
 
       const systemPrompt = `You are an AI assistant that modifies Fabric.js canvas JSON based on user instructions.
-You will receive the current canvas state as JSON and a user instruction.
-Your task is to modify the JSON according to the instruction and return ONLY the modified JSON.
+
+CRITICAL: You MUST respond with ONLY valid JSON. No explanations, no markdown, no code blocks. Just pure JSON.
 
 Canvas dimensions: ${width}px wide x ${height}px tall
 Center of canvas: left=${width / 2}, top=${height / 2}
 
-CRITICAL RULES:
-1. Return ONLY valid JSON, no explanations or markdown
-2. Preserve the overall structure of the canvas including "version" and "objects" array
-3. ABSOLUTELY NEVER delete or modify the workspace object (the rect with "name": "clip"). This object defines the canvas boundaries and MUST remain unchanged with all its properties intact.
-4. The workspace/clip object is usually the first object in the array - always keep it exactly as it is
+RULES YOU MUST FOLLOW:
+1. Return ONLY raw JSON (no \`\`\`json, no \`\`\`, no extra text)
+2. Preserve the "version" field
+3. Preserve the "objects" array structure
+4. NEVER modify or delete the workspace/clip object (usually first in objects array with "name": "clip")
+5. All new objects must be added AFTER the workspace/clip object
 
-Editing rules:
-5. For text changes: modify the "text" property of textbox objects
-6. For color changes: modify "fill" or "stroke" properties (use rgba format like "rgba(255,0,0,1)" or hex like "#ff0000")
-7. For adding shapes: add new objects to the "objects" array AFTER the workspace/clip object
-8. For moving objects: modify "left" and "top" properties
-9. For resizing: modify "width", "height", "scaleX", "scaleY" properties
-10. For deleting: remove objects from the array (but NEVER the clip object)
-11. When positioning elements, use the canvas dimensions to place them correctly
-12. "center" means left=${width / 2}, top=${height / 2}
-13. When adding new objects, position them within the canvas bounds (0 to ${width} for left, 0 to ${height} for top)
+For modifications:
+- Text changes: modify "text" property of textbox objects
+- Color changes: modify "fill" (rgba format: "rgba(255,0,0,1)" or hex: "#ff0000")
+- Adding shapes: append to "objects" array after workspace/clip
+- Position: modify "left" and "top" (center = ${width / 2}, ${height / 2})
+- Size: modify "width", "height", "scaleX", "scaleY"
+- Delete: remove from objects array (except workspace/clip)
 
-Common Fabric.js object types:
-- textbox: { type: "textbox", text: "...", left, top, fill, fontSize, fontFamily, width, height, ... }
-- rect: { type: "rect", left, top, width, height, fill, stroke, strokeWidth, ... }
-- circle: { type: "circle", left, top, radius, fill, stroke, strokeWidth, ... }
-- triangle: { type: "triangle", left, top, width, height, fill, stroke, strokeWidth, ... }
+Common Fabric.js object structures:
+{
+  "type": "textbox",
+  "text": "Hello",
+  "left": 100,
+  "top": 100,
+  "fill": "rgba(0,0,0,1)",
+  "fontSize": 40,
+  "fontFamily": "Arial",
+  "width": 200
+}
 
-Return the complete modified canvas JSON with the clip object preserved exactly as received.`;
+{
+  "type": "rect",
+  "left": 100,
+  "top": 100,
+  "width": 200,
+  "height": 100,
+  "fill": "rgba(255,0,0,1)"
+}
 
-      try {
-        const result = await model.generateContent([
-          systemPrompt,
-          `Current canvas JSON:\n${canvasJson}\n\nUser instruction: ${prompt}\n\nReturn the modified JSON:`
-        ]);
+START YOUR RESPONSE WITH { AND END WITH }. NO OTHER TEXT.`;
 
-        const response = result.response;
-        let text = response.text();
-
-        // Clean up the response - remove markdown code blocks if present
+      const extractJSON = (text: string): string => {
+        // Remove markdown code blocks
         text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-        // Validate it's valid JSON
-        JSON.parse(text);
+        // Try to find JSON between curly braces
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return jsonMatch[0];
+        }
 
-        return c.json({ data: text });
+        return text;
+      };
+
+      const validateCanvasJSON = (jsonString: string, originalJSON: string): boolean => {
+        try {
+          const parsed = JSON.parse(jsonString);
+          const original = JSON.parse(originalJSON);
+
+          // Check required fields
+          if (!parsed.version || !Array.isArray(parsed.objects)) {
+            console.error("Missing required fields: version or objects array");
+            return false;
+          }
+
+          // Check if workspace/clip object is preserved
+          const originalClip = original.objects?.find((obj: any) => obj.name === "clip");
+          const newClip = parsed.objects?.find((obj: any) => obj.name === "clip");
+
+          if (originalClip && !newClip) {
+            console.error("Workspace/clip object was removed");
+            return false;
+          }
+
+          return true;
+        } catch (e) {
+          console.error("JSON validation error:", e);
+          return false;
+        }
+      };
+
+      try {
+        let attempts = 0;
+        const maxAttempts = 3;
+        let lastError = null;
+
+        while (attempts < maxAttempts) {
+          attempts++;
+
+          try {
+            const result = await model.generateContent([
+              systemPrompt,
+              `Current canvas JSON:\n${canvasJson}\n\nUser instruction: ${prompt}\n\nReturn ONLY the modified JSON (start with { and end with }):`
+            ]);
+
+            const response = result.response;
+            let text = response.text();
+
+            console.log(`Attempt ${attempts} - Raw response length:`, text.length);
+
+            // Extract and clean JSON
+            text = extractJSON(text);
+
+            // Validate JSON structure
+            JSON.parse(text); // Basic JSON validation
+
+            // Validate canvas-specific requirements
+            if (!validateCanvasJSON(text, canvasJson)) {
+              throw new Error("Invalid canvas JSON structure");
+            }
+
+            console.log(`Attempt ${attempts} - Success`);
+            return c.json({ data: text });
+
+          } catch (attemptError) {
+            console.error(`Attempt ${attempts} failed:`, attemptError);
+            lastError = attemptError;
+
+            if (attempts < maxAttempts) {
+              // Wait a bit before retrying
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          }
+        }
+
+        // All attempts failed, return error
+        console.error("All attempts failed. Last error:", lastError);
+        return c.json({
+          error: "Failed to process AI edit after multiple attempts. Please try rephrasing your instruction."
+        }, 500);
+
       } catch (error) {
         console.error("AI edit error:", error);
         return c.json({ error: "Failed to process AI edit" }, 500);
