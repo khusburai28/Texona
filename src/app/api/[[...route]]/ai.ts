@@ -168,14 +168,15 @@ Return the complete modified canvas JSON with the clip object preserved exactly 
       "json",
       z.object({
         image: z.string(),
+        designRules: z.string().optional(),
       }),
     ),
     async (c) => {
-      const { image } = c.req.valid("json");
+      const { image, designRules } = c.req.valid("json");
 
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-      const prompt = `You are an expert design critic and aesthetic evaluator.
+      const defaultPrompt = `You are an expert design critic and aesthetic evaluator.
 Analyze this design/image and provide an aesthetic score from 0-100 based on the following criteria:
 1. Visual Balance & Composition (25 points)
 2. Color Harmony & Contrast (25 points)
@@ -197,6 +198,26 @@ Provide your response in the following JSON format only:
   "improvements": ["<suggestion 1>", "<suggestion 2>", "<suggestion 3>"],
   "summary": "<brief 2-3 sentence overall assessment>"
 }`;
+
+      const prompt = designRules ? `You are an expert design critic and aesthetic evaluator.
+Analyze this design/image and provide an aesthetic score from 0-100 based on the following custom design rules and criteria:
+
+${designRules}
+
+Provide your response in the following JSON format only:
+{
+  "score": <number between 0-100>,
+  "breakdown": {
+    "balance": <0-25>,
+    "color": <0-25>,
+    "typography": <0-20>,
+    "layout": <0-15>,
+    "appeal": <0-15>
+  },
+  "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
+  "improvements": ["<suggestion 1>", "<suggestion 2>", "<suggestion 3>"],
+  "summary": "<brief 2-3 sentence overall assessment>"
+}` : defaultPrompt;
 
       try {
         // Convert base64 image to proper format for Gemini

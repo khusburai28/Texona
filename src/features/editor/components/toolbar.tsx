@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 import {
@@ -20,7 +20,8 @@ import {
   Trash,
   SquareSplitHorizontal,
   Copy,
-  Sparkles
+  Sparkles,
+  Settings
 } from "lucide-react";
 
 import { isTextType } from "@/features/editor/utils";
@@ -41,7 +42,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useAestheticScore } from "@/features/ai/api/use-aesthetic-score";
 
 interface ToolbarProps {
@@ -49,6 +53,41 @@ interface ToolbarProps {
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
 };
+
+const DEFAULT_DESIGN_RULES = `Design Evaluation Criteria (100 points total):
+
+1. Visual Balance & Composition (25 points)
+   - Elements are well-distributed across the canvas
+   - Proper use of symmetry or asymmetry
+   - Clear visual hierarchy
+   - Focal points are effectively established
+
+2. Color Harmony & Contrast (25 points)
+   - Color palette is cohesive and intentional
+   - Sufficient contrast for readability
+   - Colors evoke appropriate emotions for the design purpose
+   - No clashing or jarring color combinations
+
+3. Typography & Readability (20 points)
+   - Font choices are appropriate and professional
+   - Text is easily readable at intended viewing distance
+   - Proper font pairing (max 2-3 font families)
+   - Appropriate font sizes and line spacing
+   - Good text-to-background contrast
+
+4. White Space & Layout (15 points)
+   - Effective use of negative space
+   - Not overcrowded or cluttered
+   - Proper margins and padding
+   - Elements have room to breathe
+
+5. Overall Visual Appeal & Impact (15 points)
+   - Design is aesthetically pleasing
+   - Creates desired emotional response
+   - Memorable and distinctive
+   - Professional execution
+
+Provide constructive feedback focusing on both strengths and specific, actionable improvements.`;
 
 export const Toolbar = ({
   editor,
@@ -79,8 +118,20 @@ export const Toolbar = ({
 
   const [showAestheticScore, setShowAestheticScore] = useState(false);
   const [aestheticData, setAestheticData] = useState<any>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [designRules, setDesignRules] = useState(DEFAULT_DESIGN_RULES);
+  const [tempDesignRules, setTempDesignRules] = useState(DEFAULT_DESIGN_RULES);
 
   const aestheticScoreMutation = useAestheticScore();
+
+  // Load design rules from localStorage on mount
+  useEffect(() => {
+    const savedRules = localStorage.getItem('aesthetic-design-rules');
+    if (savedRules) {
+      setDesignRules(savedRules);
+      setTempDesignRules(savedRules);
+    }
+  }, []);
 
   const selectedObject = editor?.selectedObjects[0];
   const selectedObjectType = editor?.selectedObjects[0]?.type;
@@ -169,6 +220,22 @@ export const Toolbar = ({
     }));
   };
 
+  const handleSaveSettings = () => {
+    setDesignRules(tempDesignRules);
+    localStorage.setItem('aesthetic-design-rules', tempDesignRules);
+    setShowSettings(false);
+    toast.success("Design rules saved successfully");
+  };
+
+  const handleResetToDefault = () => {
+    setTempDesignRules(DEFAULT_DESIGN_RULES);
+  };
+
+  const handleOpenSettings = () => {
+    setTempDesignRules(designRules);
+    setShowSettings(true);
+  };
+
   const checkAestheticScore = async () => {
     if (!editor) {
       toast.error("Editor not ready");
@@ -198,6 +265,7 @@ export const Toolbar = ({
 
       const result = await aestheticScoreMutation.mutateAsync({
         image: dataUrl,
+        designRules: designRules,
       });
 
       toast.dismiss();
@@ -215,6 +283,15 @@ export const Toolbar = ({
       <>
         <div className="shrink-0 h-[56px] border-b bg-card w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-2">
           <div className="ml-auto flex items-center gap-x-2">
+            <Hint label="Design Rules Settings" side="bottom" sideOffset={5}>
+              <Button
+                onClick={handleOpenSettings}
+                variant="ghost"
+                size="icon"
+              >
+                <Settings className="size-4" />
+              </Button>
+            </Hint>
             <Hint label="Check Aesthetic Score" side="bottom" sideOffset={5}>
               <Button
                 onClick={checkAestheticScore}
@@ -303,6 +380,58 @@ export const Toolbar = ({
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={showSettings} onOpenChange={setShowSettings}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-x-2">
+                <Settings className="size-5" />
+                Design Rules Settings
+              </DialogTitle>
+              <DialogDescription>
+                Customize the criteria used to evaluate your designs. These rules will be used by Gemini 2.5 Flash to analyze your work.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="design-rules">Design Evaluation Criteria</Label>
+                <Textarea
+                  id="design-rules"
+                  value={tempDesignRules}
+                  onChange={(e) => setTempDesignRules(e.target.value)}
+                  className="min-h-[400px] font-mono text-sm"
+                  placeholder="Enter your design evaluation criteria..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Define the criteria and scoring system for evaluating designs. Be specific about what makes a good design.
+                </p>
+              </div>
+            </div>
+            <DialogFooter className="flex items-center justify-between sm:justify-between">
+              <Button
+                variant="outline"
+                onClick={handleResetToDefault}
+                type="button"
+              >
+                Reset to Default
+              </Button>
+              <div className="flex gap-x-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowSettings(false)}
+                  type="button"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveSettings}
+                  type="button"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </>
@@ -598,6 +727,15 @@ export const Toolbar = ({
         </Hint>
       </div>
       <div className="ml-auto flex items-center gap-x-2">
+        <Hint label="Design Rules Settings" side="bottom" sideOffset={5}>
+          <Button
+            onClick={handleOpenSettings}
+            variant="ghost"
+            size="icon"
+          >
+            <Settings className="size-4" />
+          </Button>
+        </Hint>
         <Hint label="Check Aesthetic Score" side="bottom" sideOffset={5}>
           <Button
             onClick={checkAestheticScore}
@@ -685,6 +823,58 @@ export const Toolbar = ({
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-x-2">
+              <Settings className="size-5" />
+              Design Rules Settings
+            </DialogTitle>
+            <DialogDescription>
+              Customize the criteria used to evaluate your designs. These rules will be used by Gemini 2.5 Flash to analyze your work.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="design-rules">Design Evaluation Criteria</Label>
+              <Textarea
+                id="design-rules"
+                value={tempDesignRules}
+                onChange={(e) => setTempDesignRules(e.target.value)}
+                className="min-h-[400px] font-mono text-sm"
+                placeholder="Enter your design evaluation criteria..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Define the criteria and scoring system for evaluating designs. Be specific about what makes a good design.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            <Button
+              variant="outline"
+              onClick={handleResetToDefault}
+              type="button"
+            >
+              Reset to Default
+            </Button>
+            <div className="flex gap-x-2">
+              <Button
+                variant="ghost"
+                onClick={() => setShowSettings(false)}
+                type="button"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveSettings}
+                type="button"
+              >
+                Save Changes
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
