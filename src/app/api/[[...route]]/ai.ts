@@ -120,43 +120,35 @@ const app = new Hono()
 CRITICAL: You MUST respond with ONLY valid JSON. No explanations, no markdown, no code blocks. Just pure JSON.
 
 Canvas dimensions: ${width}px wide x ${height}px tall
-Center of canvas: left=${width / 2}, top=${height / 2}
+
+COORDINATE SYSTEM (IMPORTANT):
+- The workspace/clip object defines the canvas boundaries
+- The workspace may have negative or offset top/left values - preserve these EXACTLY
+- When adding new objects, look at the workspace's "left" and "top" values
+- Position new objects RELATIVE to the workspace position
+- Example: If workspace.left=234 and workspace.top=-316, and you want an object at visual center:
+  - Object left should be: workspace.left + (workspace.width / 2) = 234 + 450 = 684
+  - Object top should be: workspace.top + (workspace.height / 2) = -316 + 600 = 284
 
 RULES YOU MUST FOLLOW:
 1. Return ONLY raw JSON (no \`\`\`json, no \`\`\`, no extra text)
-2. Preserve the "version" field
-3. Preserve the "objects" array structure
-4. NEVER modify or delete the workspace/clip object (usually first in objects array with "name": "clip")
-5. All new objects must be added AFTER the workspace/clip object
+2. Preserve ALL properties of the workspace/clip object EXACTLY (do not modify left, top, width, height, shadow, etc.)
+3. Preserve the "version" field
+4. Preserve the "objects" array structure
+5. Preserve the "clipPath" object if it exists
+6. The workspace/clip object is usually first in the objects array with "name": "clip"
+7. All new objects must be added AFTER the workspace/clip object
 
 For modifications:
-- Text changes: modify "text" property of textbox objects
-- Color changes: modify "fill" (rgba format: "rgba(255,0,0,1)" or hex: "#ff0000")
-- Adding shapes: append to "objects" array after workspace/clip
-- Position: modify "left" and "top" (center = ${width / 2}, ${height / 2})
-- Size: modify "width", "height", "scaleX", "scaleY"
-- Delete: remove from objects array (except workspace/clip)
+- Text changes: modify ONLY the "text" property of textbox objects, keep all other properties
+- Color changes: modify "fill" property (use rgba format: "rgba(255,0,0,1)" or hex: "#ff0000")
+- Position changes: modify "left" and "top" properties. For "center", calculate relative to workspace position
+- Size: modify "width", "height", "scaleX", "scaleY" as needed
+- Delete: remove objects from array (but NEVER remove workspace/clip or clipPath)
+- When user says "change text", find existing textbox objects and modify their "text" property
+- When user says "add", create new objects with proper positioning relative to workspace
 
-Common Fabric.js object structures:
-{
-  "type": "textbox",
-  "text": "Hello",
-  "left": 100,
-  "top": 100,
-  "fill": "rgba(0,0,0,1)",
-  "fontSize": 40,
-  "fontFamily": "Arial",
-  "width": 200
-}
-
-{
-  "type": "rect",
-  "left": 100,
-  "top": 100,
-  "width": 200,
-  "height": 100,
-  "fill": "rgba(255,0,0,1)"
-}
+IMPORTANT: When modifying existing objects, preserve ALL their existing properties (originX, originY, stroke, strokeWidth, shadow, etc.). Only change what the user specifically asked for.
 
 START YOUR RESPONSE WITH { AND END WITH }. NO OTHER TEXT.`;
 
@@ -193,6 +185,23 @@ START YOUR RESPONSE WITH { AND END WITH }. NO OTHER TEXT.`;
             return false;
           }
 
+          // Verify clip object properties haven't been modified
+          if (originalClip && newClip) {
+            const criticalProps = ['left', 'top', 'width', 'height'];
+            for (const prop of criticalProps) {
+              if (originalClip[prop] !== newClip[prop]) {
+                console.error(`Workspace/clip ${prop} was modified: ${originalClip[prop]} -> ${newClip[prop]}`);
+                return false;
+              }
+            }
+          }
+
+          // Check if clipPath is preserved (if it existed)
+          if (original.clipPath && !parsed.clipPath) {
+            console.error("clipPath was removed");
+            return false;
+          }
+
           return true;
         } catch (e) {
           console.error("JSON validation error:", e);
@@ -209,8 +218,26 @@ START YOUR RESPONSE WITH { AND END WITH }. NO OTHER TEXT.`;
           attempts++;
 
           try {
+            const fewShotExamples = `
+EXAMPLES OF CORRECT MODIFICATIONS:
+
+Example 1 - Change text color:
+User: "Change the text to red"
+You should: Find textbox objects and change ONLY their "fill" property to "rgba(255,0,0,1)". Keep all other properties unchanged.
+
+Example 2 - Change text content:
+User: "Change the text to say Hello World"
+You should: Find textbox objects and change ONLY their "text" property to "Hello World". Keep all other properties unchanged.
+
+Example 3 - Add a shape:
+User: "Add a blue circle"
+You should: Add a new circle object AFTER the workspace/clip, using coordinates RELATIVE to the workspace position.
+
+CRITICAL: When modifying existing objects, preserve ALL properties except the one being changed!`;
+
             const result = await model.generateContent([
               systemPrompt,
+              fewShotExamples,
               `Current canvas JSON:\n${canvasJson}\n\nUser instruction: ${prompt}\n\nReturn ONLY the modified JSON (start with { and end with }):`
             ]);
 
