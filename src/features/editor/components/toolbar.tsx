@@ -274,6 +274,135 @@ export const Toolbar = ({
     }
   };
 
+  const handleCopyToCanvas = () => {
+    if (!editor || !contentRecommendations) {
+      toast.error("No content to copy");
+      return;
+    }
+
+    try {
+      const workspace = editor.getWorkspace();
+      if (!workspace) {
+        toast.error("Canvas workspace not found");
+        return;
+      }
+
+      const workspaceLeft = workspace.left || 0;
+      const workspaceTop = workspace.top || 0;
+      const workspaceWidth = workspace.width || 900;
+      const workspaceHeight = workspace.height || 1200;
+
+      // Calculate center and positions
+      const centerX = workspaceLeft + (workspaceWidth / 2);
+      const startY = workspaceTop + 100; // Start 100px from top
+      const spacing = 80; // Spacing between elements
+      let currentY = startY;
+
+      // Add Heading
+      const heading = new fabric.Textbox(contentRecommendations.heading, {
+        left: centerX,
+        top: currentY,
+        width: workspaceWidth * 0.8,
+        fontSize: 48,
+        fontWeight: 'bold',
+        fill: 'rgba(0,0,0,1)',
+        textAlign: 'center',
+        originX: 'center',
+        originY: 'top',
+      });
+      editor.canvas.add(heading);
+      currentY += heading.height! + spacing;
+
+      // Add Subheading
+      const subheading = new fabric.Textbox(contentRecommendations.subheading, {
+        left: centerX,
+        top: currentY,
+        width: workspaceWidth * 0.8,
+        fontSize: 28,
+        fontWeight: '600',
+        fill: 'rgba(100,100,100,1)',
+        textAlign: 'center',
+        originX: 'center',
+        originY: 'top',
+      });
+      editor.canvas.add(subheading);
+      currentY += subheading.height! + spacing;
+
+      // Add Body Text
+      const body = new fabric.Textbox(contentRecommendations.body, {
+        left: centerX,
+        top: currentY,
+        width: workspaceWidth * 0.7,
+        fontSize: 18,
+        fill: 'rgba(50,50,50,1)',
+        textAlign: 'center',
+        originX: 'center',
+        originY: 'top',
+        lineHeight: 1.5,
+      });
+      editor.canvas.add(body);
+      currentY += body.height! + spacing;
+
+      // Add CTA Button (as a rounded rectangle with text)
+      const ctaWidth = 200;
+      const ctaHeight = 50;
+
+      const ctaButton = new fabric.Rect({
+        left: centerX - (ctaWidth / 2),
+        top: currentY,
+        width: ctaWidth,
+        height: ctaHeight,
+        fill: 'rgba(0,0,0,1)',
+        rx: 8,
+        ry: 8,
+      });
+
+      const ctaText = new fabric.Text(contentRecommendations.cta, {
+        left: centerX,
+        top: currentY + (ctaHeight / 2),
+        fontSize: 16,
+        fontWeight: 'bold',
+        fill: 'rgba(255,255,255,1)',
+        originX: 'center',
+        originY: 'center',
+      });
+
+      const ctaGroup = new fabric.Group([ctaButton, ctaText], {
+        left: centerX,
+        top: currentY,
+        originX: 'center',
+        originY: 'top',
+      });
+      editor.canvas.add(ctaGroup);
+      currentY += ctaHeight + spacing;
+
+      // Add Caption if exists
+      if (contentRecommendations.caption) {
+        const caption = new fabric.Textbox(contentRecommendations.caption, {
+          left: centerX,
+          top: currentY,
+          width: workspaceWidth * 0.6,
+          fontSize: 14,
+          fontStyle: 'italic',
+          fill: 'rgba(120,120,120,1)',
+          textAlign: 'center',
+          originX: 'center',
+          originY: 'top',
+        });
+        editor.canvas.add(caption);
+      }
+
+      editor.canvas.renderAll();
+      toast.success("Content added to canvas!");
+      setShowContentRecommender(false);
+      setContentRecommendations(null);
+      setProductBrief("");
+    } catch (error) {
+      console.error("Failed to copy to canvas:", error);
+      toast.error("Failed to add content to canvas");
+    }
+  };
+
   const checkAestheticScore = async () => {
     if (!editor) {
       toast.error("Editor not ready");
@@ -605,7 +734,18 @@ export const Toolbar = ({
                 </div>
               )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex items-center justify-between sm:justify-between">
+              <div>
+                {contentRecommendations && (
+                  <Button
+                    onClick={handleCopyToCanvas}
+                    className="gap-x-2"
+                  >
+                    <Copy className="size-4" />
+                    Copy to Canvas
+                  </Button>
+                )}
+              </div>
               <Button
                 variant="outline"
                 onClick={() => {
@@ -1195,7 +1335,18 @@ export const Toolbar = ({
               </div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            <div>
+              {contentRecommendations && (
+                <Button
+                  onClick={handleCopyToCanvas}
+                  className="gap-x-2"
+                >
+                  <Copy className="size-4" />
+                  Copy to Canvas
+                </Button>
+              )}
+            </div>
             <Button
               variant="outline"
               onClick={() => {
