@@ -314,7 +314,7 @@ export const Toolbar = ({
                 Aesthetic Score Analysis
               </DialogTitle>
               <DialogDescription>
-                AI-powered design evaluation by Gemini 2.5 Flash
+                AI-powered design evaluation by Texona
               </DialogDescription>
             </DialogHeader>
             {aestheticData && (
@@ -390,7 +390,7 @@ export const Toolbar = ({
                 Design Rules Settings
               </DialogTitle>
               <DialogDescription>
-                Customize the criteria used to evaluate your designs. These rules will be used by Gemini 2.5 Flash to analyze your work.
+                Customize the criteria used to evaluate your designs. These rules will be used by Texona to analyze your work.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -757,7 +757,7 @@ export const Toolbar = ({
               Aesthetic Score Analysis
             </DialogTitle>
             <DialogDescription>
-              AI-powered design evaluation by Gemini 2.5 Flash
+              AI-powered design evaluation by Texona
             </DialogDescription>
           </DialogHeader>
           {aestheticData && (
@@ -833,7 +833,7 @@ export const Toolbar = ({
               Design Rules Settings
             </DialogTitle>
             <DialogDescription>
-              Customize the criteria used to evaluate your designs. These rules will be used by Gemini 2.5 Flash to analyze your work.
+              Customize the criteria used to evaluate your designs. These rules will be used by Texona to analyze your work.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
