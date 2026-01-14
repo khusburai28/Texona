@@ -367,6 +367,75 @@ Provide your response in the following JSON format only:
         return c.json({ error: "Failed to calculate aesthetic score" }, 500);
       }
     },
+  )
+  .post(
+    "/content-recommender",
+    zValidator(
+      "json",
+      z.object({
+        productBrief: z.string(),
+        canvasWidth: z.number().optional(),
+        canvasHeight: z.number().optional(),
+      }),
+    ),
+    async (c) => {
+      const { productBrief, canvasWidth, canvasHeight } = c.req.valid("json");
+
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        generationConfig: {
+          temperature: 0.8, // Higher temperature for more creative content
+          topP: 0.95,
+        },
+      });
+
+      const prompt = `You are a creative marketing content strategist. Based on the product description provided, generate compelling marketing content.
+
+Product Description: ${productBrief}
+
+${canvasWidth && canvasHeight ? `Canvas dimensions: ${canvasWidth}px × ${canvasHeight}px` : ''}
+
+Generate marketing content with the following elements:
+1. Main Heading (short, punchy, max 5 words)
+2. Subheading (compelling value proposition, max 10 words)
+3. Body Text (2-3 short sentences describing benefits)
+4. Call-to-Action (action-oriented button text, 2-4 words)
+5. Additional Caption (optional tagline or secondary message)
+
+Consider the canvas dimensions when suggesting content length. Keep text concise and impactful.
+
+Return ONLY valid JSON in this exact format:
+{
+  "heading": "Main catchy heading",
+  "subheading": "Compelling subheading",
+  "body": "Brief description highlighting key benefits and value.",
+  "cta": "Action Button",
+  "caption": "Optional tagline",
+  "styling": {
+    "headingSize": "text-4xl",
+    "subheadingSize": "text-xl",
+    "bodySize": "text-base",
+    "tone": "professional/casual/luxury"
+  }
+}`;
+
+      try {
+        const result = await model.generateContent([prompt]);
+        const response = result.response;
+        let text = response.text();
+
+        // Clean up the response
+        text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+        // Validate JSON
+        const parsedData = JSON.parse(text);
+
+        return c.json({ data: parsedData });
+      } catch (error) {
+        console.error("Content recommender error:", error);
+        return c.json({ error: "Failed to generate content recommendations" }, 500);
+      }
+    },
   );
 
 export default app;

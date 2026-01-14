@@ -21,7 +21,8 @@ import {
   SquareSplitHorizontal,
   Copy,
   Sparkles,
-  Settings
+  Settings,
+  Lightbulb
 } from "lucide-react";
 
 import { isTextType } from "@/features/editor/utils";
@@ -47,6 +48,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAestheticScore } from "@/features/ai/api/use-aesthetic-score";
+import { useContentRecommender } from "@/features/ai/api/use-content-recommender";
 
 interface ToolbarProps {
   editor: Editor | undefined;
@@ -121,8 +123,12 @@ export const Toolbar = ({
   const [showSettings, setShowSettings] = useState(false);
   const [designRules, setDesignRules] = useState(DEFAULT_DESIGN_RULES);
   const [tempDesignRules, setTempDesignRules] = useState(DEFAULT_DESIGN_RULES);
+  const [showContentRecommender, setShowContentRecommender] = useState(false);
+  const [productBrief, setProductBrief] = useState("");
+  const [contentRecommendations, setContentRecommendations] = useState<any>(null);
 
   const aestheticScoreMutation = useAestheticScore();
+  const contentRecommenderMutation = useContentRecommender();
 
   // Load design rules from localStorage on mount
   useEffect(() => {
@@ -236,6 +242,38 @@ export const Toolbar = ({
     setShowSettings(true);
   };
 
+  const handleGenerateContent = async () => {
+    if (!productBrief.trim()) {
+      toast.error("Please provide a product description");
+      return;
+    }
+
+    if (!editor) {
+      toast.error("Editor not ready");
+      return;
+    }
+
+    try {
+      const workspace = editor.getWorkspace();
+
+      toast.loading("Generating marketing content...");
+
+      const result = await contentRecommenderMutation.mutateAsync({
+        productBrief: productBrief,
+        canvasWidth: workspace?.width as number,
+        canvasHeight: workspace?.height as number,
+      });
+
+      toast.dismiss();
+      setContentRecommendations(result.data);
+      toast.success("Content generated successfully!");
+    } catch (error) {
+      toast.dismiss();
+      toast.error("Failed to generate content recommendations");
+      console.error("Content recommender error:", error);
+    }
+  };
+
   const checkAestheticScore = async () => {
     if (!editor) {
       toast.error("Editor not ready");
@@ -283,6 +321,17 @@ export const Toolbar = ({
       <>
         <div className="shrink-0 h-[56px] border-b bg-card w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-2">
           <div className="ml-auto flex items-center gap-x-2">
+            <Hint label="AI Content Recommender" side="bottom" sideOffset={5}>
+              <Button
+                onClick={() => setShowContentRecommender(true)}
+                variant="default"
+                size="sm"
+                className="gap-x-2 rounded-full border-2 border-primary/20 shadow-lg hover:shadow-xl transition-all"
+              >
+                <Lightbulb className="size-4" />
+                AI Content Recommender
+              </Button>
+            </Hint>
             <Hint label="Design Rules Settings" side="bottom" sideOffset={5}>
               <Button
                 onClick={handleOpenSettings}
@@ -431,6 +480,142 @@ export const Toolbar = ({
                   Save Changes
                 </Button>
               </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={showContentRecommender} onOpenChange={(open) => {
+          setShowContentRecommender(open);
+          if (!open) {
+            setProductBrief("");
+            setContentRecommendations(null);
+          }
+        }}>
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-x-2">
+                <Lightbulb className="size-5" />
+                AI Content Recommender
+              </DialogTitle>
+              <DialogDescription>
+                Tell us about your product and get AI-generated marketing content suggestions
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="product-brief">Product Description</Label>
+                  <Textarea
+                    id="product-brief"
+                    value={productBrief}
+                    onChange={(e) => setProductBrief(e.target.value)}
+                    placeholder="Example: Premium organic coffee beans sourced from Colombia, offering rich flavor and sustainable farming practices..."
+                    className="min-h-[120px]"
+                    disabled={contentRecommenderMutation.isPending}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Provide details about your product, target audience, key features, and unique selling points.
+                  </p>
+                </div>
+                <Button
+                  onClick={handleGenerateContent}
+                  disabled={contentRecommenderMutation.isPending || !productBrief.trim()}
+                  className="w-full"
+                >
+                  {contentRecommenderMutation.isPending ? (
+                    <>
+                      <Sparkles className="size-4 mr-2 animate-spin" />
+                      Generating Content...
+                    </>
+                  ) : (
+                    <>
+                      <Lightbulb className="size-4 mr-2" />
+                      Generate Content Recommendations
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {contentRecommendations && (
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-semibold text-sm">Content Recommendations</h3>
+                  <div className="bg-muted/30 rounded-lg p-6 space-y-6 border">
+                    {/* Preview of how content would look */}
+                    <div className="space-y-4">
+                      {/* Heading */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium">MAIN HEADING</p>
+                        <h1 className={cn(
+                          "font-bold",
+                          contentRecommendations.styling?.headingSize || "text-4xl"
+                        )}>
+                          {contentRecommendations.heading}
+                        </h1>
+                      </div>
+
+                      {/* Subheading */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium">SUBHEADING</p>
+                        <h2 className={cn(
+                          "font-semibold text-muted-foreground",
+                          contentRecommendations.styling?.subheadingSize || "text-xl"
+                        )}>
+                          {contentRecommendations.subheading}
+                        </h2>
+                      </div>
+
+                      {/* Body */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium">BODY TEXT</p>
+                        <p className={cn(
+                          "leading-relaxed",
+                          contentRecommendations.styling?.bodySize || "text-base"
+                        )}>
+                          {contentRecommendations.body}
+                        </p>
+                      </div>
+
+                      {/* CTA */}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium">CALL-TO-ACTION</p>
+                        <Button size="lg" className="font-semibold">
+                          {contentRecommendations.cta}
+                        </Button>
+                      </div>
+
+                      {/* Caption */}
+                      {contentRecommendations.caption && (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground font-medium">CAPTION/TAGLINE</p>
+                          <p className="text-sm italic text-muted-foreground">
+                            {contentRecommendations.caption}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Styling info */}
+                    {contentRecommendations.styling?.tone && (
+                      <div className="pt-4 border-t">
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium">Recommended Tone:</span> {contentRecommendations.styling.tone}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowContentRecommender(false);
+                  setProductBrief("");
+                  setContentRecommendations(null);
+                }}
+              >
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -727,6 +912,17 @@ export const Toolbar = ({
         </Hint>
       </div>
       <div className="ml-auto flex items-center gap-x-2">
+        <Hint label="AI Content Recommender" side="bottom" sideOffset={5}>
+          <Button
+            onClick={() => setShowContentRecommender(true)}
+            variant="default"
+            size="sm"
+            className="gap-x-2 rounded-full border-2 border-primary/20 shadow-lg hover:shadow-xl transition-all"
+          >
+            <Lightbulb className="size-4" />
+            AI Content Recommender
+          </Button>
+        </Hint>
         <Hint label="Design Rules Settings" side="bottom" sideOffset={5}>
           <Button
             onClick={handleOpenSettings}
@@ -874,6 +1070,142 @@ export const Toolbar = ({
                 Save Changes
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={showContentRecommender} onOpenChange={(open) => {
+        setShowContentRecommender(open);
+        if (!open) {
+          setProductBrief("");
+          setContentRecommendations(null);
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-x-2">
+              <Lightbulb className="size-5" />
+              AI Content Recommender
+            </DialogTitle>
+            <DialogDescription>
+              Tell us about your product and get AI-generated marketing content suggestions
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="product-brief-2">Product Description</Label>
+                <Textarea
+                  id="product-brief-2"
+                  value={productBrief}
+                  onChange={(e) => setProductBrief(e.target.value)}
+                  placeholder="Example: Premium organic coffee beans sourced from Colombia, offering rich flavor and sustainable farming practices..."
+                  className="min-h-[120px]"
+                  disabled={contentRecommenderMutation.isPending}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Provide details about your product, target audience, key features, and unique selling points.
+                </p>
+              </div>
+              <Button
+                onClick={handleGenerateContent}
+                disabled={contentRecommenderMutation.isPending || !productBrief.trim()}
+                className="w-full"
+              >
+                {contentRecommenderMutation.isPending ? (
+                  <>
+                    <Sparkles className="size-4 mr-2 animate-spin" />
+                    Generating Content...
+                  </>
+                ) : (
+                  <>
+                    <Lightbulb className="size-4 mr-2" />
+                    Generate Content Recommendations
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {contentRecommendations && (
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-sm">Content Recommendations</h3>
+                <div className="bg-muted/30 rounded-lg p-6 space-y-6 border">
+                  {/* Preview of how content would look */}
+                  <div className="space-y-4">
+                    {/* Heading */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground font-medium">MAIN HEADING</p>
+                      <h1 className={cn(
+                        "font-bold",
+                        contentRecommendations.styling?.headingSize || "text-4xl"
+                      )}>
+                        {contentRecommendations.heading}
+                      </h1>
+                    </div>
+
+                    {/* Subheading */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground font-medium">SUBHEADING</p>
+                      <h2 className={cn(
+                        "font-semibold text-muted-foreground",
+                        contentRecommendations.styling?.subheadingSize || "text-xl"
+                      )}>
+                        {contentRecommendations.subheading}
+                      </h2>
+                    </div>
+
+                    {/* Body */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground font-medium">BODY TEXT</p>
+                      <p className={cn(
+                        "leading-relaxed",
+                        contentRecommendations.styling?.bodySize || "text-base"
+                      )}>
+                        {contentRecommendations.body}
+                      </p>
+                    </div>
+
+                    {/* CTA */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground font-medium">CALL-TO-ACTION</p>
+                      <Button size="lg" className="font-semibold">
+                        {contentRecommendations.cta}
+                      </Button>
+                    </div>
+
+                    {/* Caption */}
+                    {contentRecommendations.caption && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium">CAPTION/TAGLINE</p>
+                        <p className="text-sm italic text-muted-foreground">
+                          {contentRecommendations.caption}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Styling info */}
+                  {contentRecommendations.styling?.tone && (
+                    <div className="pt-4 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium">Recommended Tone:</span> {contentRecommendations.styling.tone}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowContentRecommender(false);
+                setProductBrief("");
+                setContentRecommendations(null);
+              }}
+            >
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
